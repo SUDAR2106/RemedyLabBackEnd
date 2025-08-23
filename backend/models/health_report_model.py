@@ -1,7 +1,7 @@
 #remedylab\backend\models\health_report_model.py
 
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime
 import uuid
 import json # To handle JSON string for extracted_data_json
@@ -87,7 +87,87 @@ class HealthReport:
                        upload_date, file_name, file_path, extracted_data_json,
                        assigned_doctor_id, processing_status)
         return None
+    @classmethod
+    def count_by_patient_id(cls, patient_id: str) -> int:
+        """
+        Count the total number of health reports for a specific patient.
+        
+        Args:
+            patient_id (str): The patient ID to count reports for
+            
+        Returns:
+            int: Number of reports for the patient
+        """
+        db_manager = DBManager()
+        query = "SELECT COUNT(*) as count FROM health_reports WHERE patient_id = ?"
+        result = db_manager.fetch_one(query, (patient_id,))
+        return result['count'] if result else 0
 
+    @classmethod
+    def get_latest_by_patient_id(cls, patient_id: str) -> Optional['HealthReport']:
+        """
+        Get the most recent health report for a specific patient based on upload_date.
+        
+        Args:
+            patient_id (str): The patient ID to get the latest report for
+            
+        Returns:
+            Optional[HealthReport]: The most recent HealthReport object or None if no reports found
+        """
+        db_manager = DBManager()
+        query = """
+            SELECT * FROM health_reports 
+            WHERE patient_id = ? 
+            ORDER BY upload_date DESC 
+            LIMIT 1
+        """
+        result = db_manager.fetch_one(query, (patient_id,))
+        if result:
+            return cls(**result)
+        return None
+
+    @classmethod
+    def get_by_patient_id_paginated(cls, patient_id: str, skip: int = 0, limit: int = 100) -> List['HealthReport']:
+        """
+        Get paginated health reports for a specific patient, ordered by upload_date (most recent first).
+        
+        Args:
+            patient_id (str): The patient ID to get reports for
+            skip (int): Number of records to skip (for pagination)
+            limit (int): Maximum number of records to return
+            
+        Returns:
+            List[HealthReport]: List of HealthReport objects
+        """
+        db_manager = DBManager()
+        query = """
+            SELECT * FROM health_reports 
+            WHERE patient_id = ? 
+            ORDER BY upload_date DESC 
+            LIMIT ? OFFSET ?
+        """
+        results = db_manager.fetch_all(query, (patient_id, limit, skip))
+        return [cls(**result) for result in results] if results else []
+
+    @classmethod
+    def get_by_patient_id(cls, patient_id: str) -> List['HealthReport']:
+        """
+        Get all health reports for a specific patient, ordered by upload_date (most recent first).
+        
+        Args:
+            patient_id (str): The patient ID to get reports for
+            
+        Returns:
+            List[HealthReport]: List of HealthReport objects
+        """
+        db_manager = DBManager()
+        query = """
+            SELECT * FROM health_reports 
+            WHERE patient_id = ? 
+            ORDER BY upload_date DESC
+        """
+        results = db_manager.fetch_all(query, (patient_id,))
+        return [cls(**result) for result in results] if results else []
     @classmethod
     def get_by_report_id(cls, report_id: str) -> Optional['HealthReport']:
         db_manager = DBManager()

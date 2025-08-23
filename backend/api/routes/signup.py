@@ -22,6 +22,30 @@ async def signup_user(request: SignUpRequest):
     """
     
     logger.info("=== SIGNUP ENDPOINT CALLED ===")
+     # COMPREHENSIVE REQUEST DEBUGGING
+    logger.info("=== RAW REQUEST DEBUGGING ===")
+    logger.info(f"Request object type: {type(request)}")
+    logger.info(f"Request dict: {request.model_dump()}")
+    logger.info(f"Request JSON: {request.model_dump_json(indent=2)}")
+    
+    logger.info("=== USER TYPE & DATA ===")
+    logger.info(f"User type: '{request.user_type}'")
+    logger.info(f"User data: {request.user_data}")
+    logger.info(f"Patient details: {request.patient_details}")
+    logger.info(f"Doctor details: {request.doctor_details}")
+    
+    if request.doctor_details:
+        logger.info("=== DOCTOR DETAILS BREAKDOWN ===")
+        logger.info(f"Medical license: '{request.doctor_details.medical_license_number}'")
+        logger.info(f"Specialization: '{request.doctor_details.specialization}'")
+        logger.info(f"Contact number: '{request.doctor_details.contact_number}'")
+        logger.info(f"Hospital affiliation: '{request.doctor_details.hospital_affiliation}'")
+        
+        # Check for None vs empty string
+        logger.info(f"Contact number is None: {request.doctor_details.contact_number is None}")
+        logger.info(f"Contact number is empty string: {request.doctor_details.contact_number == ''}")
+        logger.info(f"Contact number length: {len(request.doctor_details.contact_number or '')}")
+        logger.info(f"Contact number type: {type(request.doctor_details.contact_number)}")
     
     try:
         # Log the incoming request for debugging
@@ -134,14 +158,35 @@ async def signup_user(request: SignUpRequest):
             logger.info("Updating doctor profile...")
             doctor_profile = Doctor.get_by_doctor_id(user.user_id)
             if doctor_profile:
+                logger.info(f"Found doctor profile: {doctor_profile.to_dict()}")
+                
+                # Log what we're about to update
+                logger.info("=== VALUES BEING PASSED TO UPDATE ===")
+                logger.info(f"medical_license_number: '{request.doctor_details.medical_license_number}'")
+                logger.info(f"specialization: '{request.doctor_details.specialization}'")
+                logger.info(f"contact_number: '{request.doctor_details.contact_number}'")
+                logger.info(f"hospital_affiliation: '{request.doctor_details.hospital_affiliation}'")
+
                 success = doctor_profile.update_doctor_info(
                     medical_license_number=request.doctor_details.medical_license_number,
                     specialization=request.doctor_details.specialization,
                     contact_number=request.doctor_details.contact_number,
                     hospital_affiliation=request.doctor_details.hospital_affiliation
                 )
-                if not success:
-                    logger.warning(f"Failed to update doctor details for user {user.user_id}")
+                logger.info(f"Doctor profile update success: {success}")
+
+                if success:
+                    # Verify the update by fetching the record again
+                    updated_doctor = Doctor.get_by_doctor_id(user.user_id)
+                    if updated_doctor:
+                        logger.info("=== VERIFICATION OF UPDATED DOCTOR RECORD ===")
+                        logger.info(f"Updated doctor record: {updated_doctor.to_dict()}")
+                        logger.info(f"Contact number in DB after update: '{updated_doctor.contact_number}'")
+                else:
+                    logger.error(f"Failed to update doctor details for user {user.user_id}")
+            else:
+                logger.error(f"Doctor profile not found for user {user.user_id}")
+
 
         logger.info("Preparing response...")
         response_data = SignUpSuccessResponse(

@@ -101,7 +101,7 @@ class User:
 
     @classmethod
     def create(cls, username: str, password_hash: str, user_type: str, email: str,
-               first_name: Optional[str] = None, last_name: Optional[str] = None) -> Optional['User']:
+            first_name: Optional[str] = None, last_name: Optional[str] = None) -> Optional['User']:
         user_id = str(uuid.uuid4())
         current_time = datetime.now().isoformat()
         db_manager = DBManager()
@@ -121,9 +121,11 @@ class User:
                         (user_id, user_id) # patient_id is the same as user_id for simplicity
                     )
                 elif user_type == "doctor":
-                    # When creating a doctor, also create their doctor profile
+                    # Create basic doctor profile with all columns set to NULL except required ones
                     db_manager.execute_query(
-                        "INSERT INTO doctors (doctor_id, user_id, is_available) VALUES (?, ?, ?)",
+                        """INSERT INTO doctors (doctor_id, user_id, medical_license_number, 
+                        specialization, contact_number, hospital_affiliation, is_available, last_assignment_date) 
+                        VALUES (?, ?, NULL, NULL, NULL, NULL, ?, NULL)""",
                         (user_id, user_id, 1) # Doctors are available by default (1 for True)
                     )
                 return cls(user_id, username, password_hash, user_type, email, first_name, last_name, current_time, current_time)
@@ -134,7 +136,6 @@ class User:
         except Exception as e:
             print(f"Error creating user: {e}")
             return None
-
 
     @classmethod
     def get_by_username(cls, username: str) -> Optional['User']:

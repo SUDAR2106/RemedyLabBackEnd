@@ -17,3 +17,11 @@ class LoginSuccessResponse(BaseModel):
     first_name: str
     last_name: str
     email: Optional[str] = None # email: str | None = None
+
+class UserProfileResponse(BaseModel):
+    user_id: str
+    username: str
+    user_type: str
+    first_name: str
+    last_name: str
+    email: Optional[str] = None

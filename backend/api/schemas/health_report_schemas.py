@@ -1,5 +1,6 @@
 # remedylab/backend/api/schemas/health_report_schemas.py
 
+
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, List
 from datetime import datetime
@@ -8,9 +9,8 @@ import uuid
 class HealthReportUploadRequest(BaseModel):
     """
     Schema for health report upload request (used with Form data)
+    Note: patient_id and uploaded_by are automatically set from current user
     """
-    patient_id: str = Field(..., description="ID of the patient")
-    uploaded_by: str = Field(..., description="ID of the user uploading the report")
     report_type: Optional[str] = Field(None, description="Type of the health report")
 
 class HealthReportBase(BaseModel):
@@ -84,6 +84,28 @@ class FileUploadResponse(BaseModel):
     report_id: str
     file_name: str
     upload_status: str = "success"
+
+class PatientDashboardResponse(BaseModel):
+    """
+    Schema for patient dashboard response
+    """
+    message: str
+    user_type: str
+    user_id: str
+    first_name: str
+    last_name: str
+
+class UserProfileResponse(BaseModel):
+    """
+    Schema for user profile response
+    """
+    user_id: str
+    username: str
+    user_type: str
+    full_name: str
+    first_name: str
+    last_name: str
+    email: Optional[str] = None
 
 class ErrorResponse(BaseModel):
     """

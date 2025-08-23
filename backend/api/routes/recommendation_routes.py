@@ -1,9 +1,11 @@
 # remedylab/backend/api/routes/recommendation_routes.py
-
+# Import authentication dependencies
+from utils.auth_dependencies import get_current_user, get_current_doctor, CurrentUser
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List, Optional
 import sqlite3
 from database.db import get_db
+from sqlalchemy.orm import Session
 from models.recommendation import Recommendation
 from api.schemas.recommendation_schemas import (
     RecommendationResponse,
@@ -130,13 +132,21 @@ async def get_approved_recommendations_for_patient(
 @router.get("/doctor/{doctor_id}/pending", response_model=List[RecommendationResponse])
 async def get_pending_recommendations_for_doctor(
     doctor_id: str,
-    db: sqlite3.Connection = Depends(get_db)
+    current_user: CurrentUser = Depends(get_current_doctor),
+    db: Session = Depends(get_db)
 ):
     """
     Get all pending recommendations assigned to a doctor for review.
     """
+     # Verify the current user is the requested doctor (security check)
+    if current_user.user_id != doctor_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only access your own pending recommendations."
+        )
+
     pending_recommendations = Recommendation.get_pending_for_doctor(doctor_id)
-    
+
     if not pending_recommendations:
         return []
     

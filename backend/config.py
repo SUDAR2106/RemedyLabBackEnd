@@ -10,6 +10,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-jwt_secret = os.getenv("JWT_SECRET")
+JWT_SECRET = os.getenv("JWT_SECRET","fallback_secret")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 JWT_EXP_DELTA_SECONDS = int(os.getenv("JWT_EXP_DELTA_SECONDS", 3600))

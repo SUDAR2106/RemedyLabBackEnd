@@ -1,4 +1,3 @@
-
 import uuid
 import datetime
 from database.db_utils import DBManager
@@ -49,18 +48,18 @@ class Recommendation:
                     None, None, None, created_at)
         return None
 
-    # @staticmethod
-    # def get_by_id(recommendation_id: str) -> 'Recommendation':
-    #     query = "SELECT * FROM recommendations WHERE recommendation_id = ?"
-    #     rec_data = DBManager.fetch_one(query, (recommendation_id,))
-    #     return Recommendation(**rec_data) if rec_data else None
-
     @staticmethod
     def find_by_report_id(report_id: str) -> 'Recommendation':
         db_manager = DBManager()
         query = "SELECT * FROM recommendations WHERE report_id = ?"
         rec_data = db_manager.fetch_one(query, (report_id,))
         return Recommendation(**rec_data) if rec_data else None
+
+    # Fixed method name to match the error
+    @staticmethod
+    def get_by_report_id(report_id: str) -> 'Recommendation':
+        """Alias for find_by_report_id to match API expectations"""
+        return Recommendation.find_by_report_id(report_id)
 
     @staticmethod
     def get_by_patient_id(patient_id: str) -> list['Recommendation']:
@@ -84,7 +83,55 @@ class Recommendation:
         recs_data = db_manager.fetch_all(query, (doctor_id,))
         return [Recommendation(**rec) for rec in recs_data] if recs_data else []
     
+    # Fixed method name to match the error
+    @staticmethod
+    def get_pending_by_doctor_id(doctor_id: str) -> list['Recommendation']:
+        """Alias for get_pending_for_doctor to match API expectations"""
+        return Recommendation.get_pending_for_doctor(doctor_id)
     
+    # Added method to count pending recommendations
+    @staticmethod
+    def count_pending_by_doctor_id(doctor_id: str) -> int:
+        """
+        Returns count of recommendations assigned to this doctor with status 'AI_generated' or 'pending_doctor_review'
+        """
+        db_manager = DBManager()
+        query = """
+            SELECT COUNT(*) as count FROM recommendations
+            WHERE doctor_id = ? AND status IN ('AI_generated', 'pending_doctor_review')
+        """
+        result = db_manager.fetch_one(query, (doctor_id,))
+        return result['count'] if result else 0
+    @staticmethod
+    def count_reviewed_by_doctor_id(doctor_id: str) -> int:
+        """
+        Returns the count of recommendations reviewed by a specific doctor.
+        """
+        db_manager = DBManager()
+        query = """
+            SELECT COUNT(*) as count FROM recommendations
+            WHERE doctor_id = ? AND status IN (
+                'approved_by_doctor', 
+                'modified_and_approved_by_doctor', 
+                'rejected_by_doctor'
+            )
+        """
+        result = db_manager.fetch_one(query, (doctor_id,))
+        return result['count'] if result else 0
+    
+    @staticmethod
+    def count_total_reports_assigned_to_doctor(doctor_id: str) -> int:
+        """
+        Counts total unique reports that have been assigned to this doctor through recommendations.
+        """
+        db_manager = DBManager()
+        query = """
+            SELECT COUNT(DISTINCT report_id) as count FROM recommendations
+            WHERE doctor_id = ?
+        """
+        result = db_manager.fetch_one(query, (doctor_id,))
+        return result['count'] if result else 0
+        
     @staticmethod
     def get_reviewed_by_doctor(doctor_id: str):
         """
@@ -101,6 +148,13 @@ class Recommendation:
         if results:
             return [Recommendation(**row) for row in results]
         return []
+    
+    # Fixed method name to match the error
+    @staticmethod
+    def get_reviewed_by_doctor_id(doctor_id: str):
+        """Alias for get_reviewed_by_doctor to match API expectations"""
+        return Recommendation.get_reviewed_by_doctor(doctor_id)
+
     @staticmethod
     def get_by_recommendation_id(recommendation_id: str) -> 'Recommendation':
         db_manager = DBManager()
@@ -161,11 +215,14 @@ class Recommendation:
             self.reviewed_date, self.last_updated_at,
             self.recommendation_id
         ))
-       
-        # get doctor_id from logged-in user
-        # if not self.doctor_id:
-    # --- Approve the recommendation as-is without modifying treatment/lifestyle ---
-    # This is a convenience method for doctors who want to approve the AI-generated recommendation without changes
+
+    # Added property to match the error
+    @property
+    def reviewed_by_doctor_id(self):
+        """Returns the doctor_id if this recommendation has been reviewed"""
+        if self.status in ('approved_by_doctor', 'modified_and_approved_by_doctor', 'rejected_by_doctor'):
+            return self.doctor_id
+        return None
    
     def approve(self, doctor_id: str, doctor_notes: str = "") -> bool:
         """
@@ -179,7 +236,6 @@ class Recommendation:
             approved_lifestyle=self.ai_generated_lifestyle
         )
     
-    # --- Modify the recommendation ---
     def modify_and_approve(self, doctor_id: str, approved_treatment: str, approved_lifestyle: str, doctor_notes: str = "") -> bool:
         """
         Allows the doctor to modify the treatment/lifestyle plan and approve the recommendation.
@@ -205,7 +261,6 @@ class Recommendation:
             approved_lifestyle=None  # Clear any previous approved content
         )
 
-
     def to_dict(self):
         return {
             "recommendation_id": self.recommendation_id,
@@ -221,5 +276,6 @@ class Recommendation:
             "approved_treatment": self.approved_treatment,
             "approved_lifestyle": self.approved_lifestyle,
             "created_at": self.created_at,
-            "last_updated_at": self.last_updated_at
+            "last_updated_at": self.last_updated_at,
+            "reviewed_by_doctor_id": self.reviewed_by_doctor_id  # Add this for API compatibility
         }
